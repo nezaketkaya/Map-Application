@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Turkey Map</title>
+  <link rel="stylesheet" href="map.css">
+  <link rel="stylesheet" href="https://openlayers.org/en/v6.15.1/css/ol.css" type="text/css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <script src="https://openlayers.org/en/v6.15.1/build/ol.js"></script>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="navbar-buttons">
+      <button id="add-point-btn">Add Point</button>
+      <button id="query-btn">Query</button>
+    </div>
+  </div>
+
+  <div id="map" class="map"></div>
+
+  <div id="panel" class="jspanel">
+    <form id="point-form">
+      <label for="pointx">X Coordinate:</label>
+      <input type="text" id="pointx" readonly><br>
+      <label for="pointy">Y Coordinate:</label>
+      <input type="text" id="pointy" readonly><br>
+      <label for="name">Name:</label>
+      <input type="text" id="name"><br>
+      <button type="button" id="save-btn">Save</button>
+    </form>
+  </div>
+
+  <div id="query-panel" class="jspanel">
+    <h3>Coordinates List</h3>
+    <table id="coordinates-table" class="display">
+      <thead>
+        <tr>
+          <th>X Coordinate</th>
+          <th>Y Coordinate</th>
+          <th>Name</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="coordinates-list">
+        <!-- Dinamik olarak eklenen veriler buraya gelecek -->
+      </tbody>
+    </table>
+    <button type="button" id="close-query-btn">Close</button>
+  </div>
+
+  <script src="map.js"></script>
+
+</body>
+</html>
