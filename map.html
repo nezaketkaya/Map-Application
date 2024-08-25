@@ -6,7 +6,10 @@
   <link rel="stylesheet" href="https://openlayers.org/en/v6.15.1/css/ol.css" type="text/css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
   <script src="https://openlayers.org/en/v6.15.1/build/ol.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- jQuery -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script> <!-- DataTables -->
 </head>
+
 <body>
 
   <div class="navbar">
@@ -20,32 +23,13 @@
 
   <div id="panel" class="jspanel">
     <form id="point-form">
-      <label for="pointx">X Coordinate:</label>
-      <input type="text" id="pointx" readonly><br>
-      <label for="pointy">Y Coordinate:</label>
-      <input type="text" id="pointy" readonly><br>
-      <label for="name">Name:</label>
-      <input type="text" id="name"><br>
+      <p><strong>X Coordinate:</strong> <span id="pointX"></span></p>
+      <p><strong>Y Coordinate:</strong> <span id="pointY"></span></p>
+      <label for="Name">Name:</label>
+      <input type="text" id="Name"><br>
       <button type="button" id="save-btn">Save</button>
+      <button id="close-panel-btn">İptal</button>
     </form>
-  </div>
-
-  <div id="query-panel" class="jspanel">
-    <h3>Coordinates List</h3>
-    <table id="coordinates-table" class="display">
-      <thead>
-        <tr>
-          <th>X Coordinate</th>
-          <th>Y Coordinate</th>
-          <th>Name</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="coordinates-list">
-        <!-- Dinamik olarak eklenen veriler buraya gelecek -->
-      </tbody>
-    </table>
-    <button type="button" id="close-query-btn">Close</button>
   </div>
 
   <script src="map.js"></script>

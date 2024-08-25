@@ -137,38 +137,3 @@ body {
 .jspanel button:hover {
   background-color: #1b8c17;
 }
-
-#query-panel {
-  position: absolute;
-  background-color: #71d0e5; /* Panel rengi mavi */
-  border: 1px solid #ccc;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  border-radius: 10px; /* Panelin kenarlarını yuvarlat */
-  padding: 20px;
-  z-index: 1001;
-  display: none; /* Başlangıçta gizli */
-  color: white; /* Yazı rengi beyaz */
-  font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
-}
-
-#query-panel h3 {
-  margin-top: 0;
-}
-
-#query-panel table {
-  width: 100%;
-  margin-top: 10px;
-}
-
-#query-panel table td, #query-panel table th {
-  padding: 8px;
-  text-align: left;
-}
-
-#query-panel button {
-  background-color: #438fc9;
-}
-
-#query-panel button:hover {
-  background-color: #2175b5;
-}
