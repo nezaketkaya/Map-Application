@@ -5,14 +5,46 @@ document.addEventListener('DOMContentLoaded', () => {
       new ol.layer.Tile({
         source: new ol.source.OSM()
       }),
+
       new ol.layer.Vector({
         source: new ol.source.Vector(),
-        style: new ol.style.Style({
-          image: new ol.style.Circle({
-            radius: 3,
-            fill: new ol.style.Fill({ color: 'red' })
-          })
-        })
+        style: function(feature) {
+          if (feature.get('selected')) {
+            return new ol.style.Style({
+              image: new ol.style.Circle({
+                radius: 3, // Kırmızı noktanın yarıçapı
+                fill: new ol.style.Fill({ color: 'blue' }) // Kırmızı noktanın dolgusu
+              })
+            });
+          }
+        }
+      }),
+
+      new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: function(feature) {
+          if (feature.get('highlighted')) {
+            return new ol.style.Style({
+              // Çember stili
+              image: new ol.style.Circle({
+                radius: 50, // Çemberin yarıçapı
+                fill: new ol.style.Fill({ color: 'rgba(113, 208, 229, 0.3)' }), // Çemberin dolgusu
+                stroke: new ol.style.Stroke({
+                  color: 'rgba(113, 208, 229, 0.8)', // Çemberin kenarlığı
+                  width: 1 // Çemberin kenarlık genişliği
+                })
+              }),
+              // Merkezdeki kırmızı nokta stili
+              text: new ol.style.Text({
+                text: '\u25CF', // Unicode karakteri: dolu daire
+                font: 'bold 10px Arial',
+                fill: new ol.style.Fill({ color: 'blue' }),
+                offsetX: 0,
+                offsetY: 0
+              })
+            });
+          }
+        }
       })
     ],
     view: new ol.View({
@@ -27,8 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const Name = document.getElementById('Name');
   const saveBtn = document.getElementById('save-btn');
   let interaction = null;
+  let selectedFeature = null;
 
-  // Function to handle save button click
+  // Kaydetme butonuna tıklama işlevi
   const handleSaveClick = async () => {
     const point = {
       pointX: parseFloat(pointX.textContent),
@@ -49,8 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await response.json();
         console.log('Point added:', data);
 
-        // Update the feature with the ID returned from the server
-        feature.setId(data.id);
+        // Özelliği, sunucudan dönen ID ile güncelle
+        if (selectedFeature) {
+          selectedFeature.setId(data.id);
+        }
       } else {
         console.error('Error adding point:', response.status);
       }
@@ -58,22 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Fetch error:', error);
     }
 
-    // Hide the panel and reset cursor
+    // Paneli gizle ve imleci varsayılan hale getir
     panel.style.display = 'none';
     map.getViewport().style.cursor = 'default';
-    
-    // Remove the interaction after saving
+
+    // Etkileşimi kaldır
     map.removeInteraction(interaction);
     interaction = null;
-
-    // Remove the event listener after saving
-    saveBtn.removeEventListener('click', handleSaveClick);
   };
 
   document.getElementById('add-point-btn').addEventListener('click', () => {
     if (!interaction) {
       interaction = new ol.interaction.Select({
-        layers: [map.getLayers().getArray()[1]]
+        layers: [map.getLayers().getArray()[0]] // Seçim sadece harita katmanı
       });
 
       map.addInteraction(interaction);
@@ -87,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       pointX.textContent = coord[0].toFixed(6);
       pointY.textContent = coord[1].toFixed(6);
 
-      // Add the point to the map immediately
+      // Haritaya nokta ekle
       const feature = new ol.Feature({
         geometry: new ol.geom.Point(event.coordinate),
         name: Name.value || 'Untitled'
@@ -95,18 +127,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
       map.getLayers().getArray()[1].getSource().addFeature(feature);
 
-      // Show the panel
+      // Vurgulama özelliği oluştur
+      selectedFeature = new ol.Feature({
+        geometry: new ol.geom.Point(event.coordinate)
+      });
+      selectedFeature.set('highlighted', true);
+      map.getLayers().getArray()[2].getSource().clear(); // Var olan vurgulamaları temizle
+      map.getLayers().getArray()[2].getSource().addFeature(selectedFeature);
+
+      // Paneli göster
+      const circleRadius = 50; // Çemberin yarıçapı
+      const panelWidth = panel.offsetWidth;
+      const panelHeight = panel.offsetHeight;
+      const mapSize = map.getSize();
+      const mapWidth = mapSize[0];
+      const mapHeight = mapSize[1];
+      const xOffset = event.pixel[0] + 10;
+      const yOffset = event.pixel[1] + 10;
+
+      // Paneli çemberin dışına taşımak için yeni konum hesaplama
+      let panelLeft = xOffset;
+      let panelTop = yOffset;
+
+      if (xOffset + panelWidth > mapWidth) {
+        panelLeft = xOffset - panelWidth - 10; // Paneli sola kaydır
+      }
+      if (yOffset + panelHeight > mapHeight) {
+        panelTop = yOffset - panelHeight - 10; // Paneli yukarı kaydır
+      }
+
+      // Paneli görünür yap ve konumunu ayarla
+      panel.style.left = `${Math.max(0, panelLeft)}px`;
+      panel.style.top = `${Math.max(0, panelTop)}px`;
       panel.style.display = 'block';
-      panel.style.left = `${event.pixel[0] + 10}px`;
-      panel.style.top = `${event.pixel[1] + 10}px`;
 
-      // Event listener for closing the panel
-      document.getElementById('close-panel-btn').addEventListener('click', () => {
-        panel.style.display = 'none';
-        map.getViewport().style.cursor = 'default';
-      }, { once: true });
-
-      // Add the event listener for saving the point
+      // Kaydetme butonuna tıklama işlevini ekle
       saveBtn.addEventListener('click', handleSaveClick, { once: true });
     }
   });

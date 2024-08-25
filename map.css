@@ -100,7 +100,7 @@ body {
 
 .jspanel {
   position: absolute;
-  background-color: #71d0e5; /* Panel rengi mavi */
+  background-color: rgb(113, 208, 229); /* Panel rengi mavi */
   border: 1px solid #ccc;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   border-radius: 10px; /* Panelin kenarlarını yuvarlat */
