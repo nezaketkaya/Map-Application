@@ -34,7 +34,7 @@ body {
 
 #add-point-btn {
   border: none;
-  background-color: #2dbe23;
+  background-color: rgb(45, 190, 35);
   color: #ffffff;
   font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
   font-weight: bold;
@@ -43,9 +43,11 @@ body {
   position: relative;
   cursor: pointer;
   border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
 }
+
 #query-btn {
-  background-color: #28758e;
+  background-color: hsl(195, 56%, 36%);
   border: none;
   color: #ffffff;
   font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
@@ -55,6 +57,7 @@ body {
   position: relative;
   cursor: pointer;
   border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
 }
 
 #add-point-btn:after,
@@ -80,6 +83,7 @@ body {
   color: #2dbe23;
   background-color: #ffffff;
 }
+
 #query-btn:hover {
   color: #28758e;
   background-color: #ffffff;
@@ -97,17 +101,16 @@ body {
   top: 2px;
 }
 
-
 .jspanel {
   position: absolute;
-  background-color: rgb(113, 208, 229); /* Panel rengi mavi */
+  background-color: rgb(113, 208, 229);
   border: 1px solid #ccc;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  border-radius: 10px; /* Panelin kenarlarını yuvarlat */
+  border-radius: 10px;
   padding: 20px;
   z-index: 1001;
-  display: none; /* Başlangıçta gizli */
-  color: white; /* Yazı rengi beyaz */
+  display: none;
+  color: white;
   font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
 }
 
@@ -117,12 +120,12 @@ body {
 }
 
 .jspanel input[type="text"] {
-  width: calc(100% - 22px); /* Genişliği panelin kenar boşluklarını da kapsayacak şekilde ayarla */
+  width: calc(100% - 22px);
   padding: 10px;
   margin-bottom: 10px;
   border: 1px solid #ccc;
-  border-radius: 5px; /* Input alanlarının kenarlarını yuvarlat */
-  background-color: #def4f6; /* Input alanlarının rengi beyaz */
+  border-radius: 5px;
+  background-color: #def4f6;
 }
 
 .jspanel button {
@@ -138,34 +141,71 @@ body {
   background-color: #1b8c17;
 }
 
-
 .query-panel {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: white;
-  padding: 20px;
-  border-radius: 10px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: rgb(241, 222, 243);
+  padding: 15px;
+  border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   display: none;
+  min-width: 100px;
+  min-height: 200px;
   max-width: 80%;
   max-height: 80%;
+  overflow: auto;
+  font-size: 14px;
+}
+
+.query-panel h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.query-panel table {
+  font-size: 12px;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.close-btn {
+  background-color: #83160e;
+  color: rgb(147, 93, 93);
+  border: none;
+  padding: 5px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background-color: #d32f2f;
+}
+
+.dataTables_wrapper {
+  min-width: 100%;
   overflow: auto;
 }
 
 #points-table {
-  width: 100%;
+  width: 100% !important;
+  min-width: 500px;
 }
 
 #points-table th, #points-table td {
-  padding: 10px;
+  padding: 8px;
   text-align: left;
 }
 
 #points-table th {
-  background-color: #f2f2f2;
+  background-color: #ecbcf9;
 }
 
 .action-btn {
@@ -174,19 +214,65 @@ body {
   border: none;
   border-radius: 3px;
   cursor: pointer;
+  font-size: 12px;
 }
 
 .update-btn {
-  background-color: #4CAF50;
+  background-color: #9de99f;
   color: white;
 }
 
 .show-btn {
-  background-color: #2196F3;
+  background-color: #ebfaa7;
   color: white;
 }
 
 .delete-btn {
-  background-color: #f44336;
+  background-color: #f0a09b;
   color: white;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 200px;
+  text-align: center;
+}
+
+#panel-update, #map-update {
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+#update-panel {
+  display: none;
+}
+
+.table-resizer {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+}
+
+.table-resizer:hover,
+.table-resizer.resizing {
+  border-right: 2px solid #999;
 }

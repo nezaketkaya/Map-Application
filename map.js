@@ -69,9 +69,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const saveBtn = document.getElementById('save-btn');
   const queryBtn = document.getElementById('query-btn');
   const queryPanel = document.getElementById('query-panel');
+  const updatePanel = document.getElementById('update-panel');
+  const updatePointX = document.getElementById('update-pointX');
+  const updatePointY = document.getElementById('update-pointY');
+  const updateName = document.getElementById('update-Name');
+  const updateSaveBtn = document.getElementById('update-save-btn');
+  const updateCancelBtn = document.getElementById('update-cancel-btn');
+  const closeBtn = document.querySelector('.close-btn');
+
   let interaction = null;
   let selectedFeature = null;
   let dataTable;
+  let currentUpdateId = null;
+  let mapUpdateMode = false;
 
   const loadAllPoints = async () => {
     try {
@@ -158,7 +168,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   map.on('click', (event) => {
-    if (interaction) {
+    if (mapUpdateMode) {
+      const coord = ol.proj.toLonLat(event.coordinate);
+      const updatedPoint = {
+        pointX: coord[0],
+        pointY: coord[1]
+      };
+
+      fetch(`http://localhost:5183/api/Point/updateUOW/${currentUpdateId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedPoint)
+      })
+      .then(response => {
+        if (response.ok) {
+          console.log('Point updated successfully');
+          mapUpdateMode = false;
+          map.getViewport().style.cursor = 'default';
+          loadAllPoints();
+          loadPointsTable();
+        } else {
+          console.error('Error updating point:', response.status);
+        }
+      })
+      .catch(error => {
+        console.error('Fetch error:', error);
+      });
+    } else if (interaction) {
       const coord = ol.proj.toLonLat(event.coordinate);
       pointX.textContent = coord[0].toFixed(6);
       pointY.textContent = coord[1].toFixed(6);
@@ -221,18 +259,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       dataTable = $('#points-table').DataTable({
         data: data.value,
         columns: [
-          { data: 'pointx' },
-          { data: 'pointy' },
-          { data: 'name' },
+          { data: 'pointx', width: '25%' },
+          { data: 'pointy', width: '25%' },
+          { data: 'name', width: '25%' },
           {
             data: null,
+            width: '25%',
             render: function (data, type, row) {
               return '<button class="action-btn update-btn" data-id="' + row.id + '">Update</button>' +
                      '<button class="action-btn show-btn" data-id="' + row.id + '">Show</button>' +
                      '<button class="action-btn delete-btn" data-id="' + row.id + '">Delete</button>';
             }
           }
-        ]
+        ],
+        scrollX: true,
+        scrollY: '400px',
+        scrollCollapse: true,
+        paging: true,
+        columnDefs: [
+          { targets: '_all', className: 'dt-head-left' }
+        ],
+        initComplete: function(settings, json) {
+          this.api().columns().every(function(colIdx) {
+            var column = this;
+            var cell = $('.filters th').eq($(column.header()).index());
+            var title = $(column.header()).text();
+            cell.html('<input type="text" placeholder="' + title + '" />');
+            $('input', cell).on('keyup change', function() {
+              if (column.search() !== this.value) {
+                column.search(this.value).draw();
+              }
+            });
+          });
+          makeResizable(this.api());
+        }
       });
 
       $('#points-table').on('click', '.update-btn', function() {
@@ -256,11 +316,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function updatePoint(id) {
-    console.log('Update point with id:', id);
+    currentUpdateId = id;
+    try {
+      const response = await fetch(`http://localhost:5183/api/Point/getByIdUOW/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        updatePointX.value = data.pointx;
+        updatePointY.value = data.pointy;
+        updateName.value = data.name;
+        updatePanel.style.display = 'block';
+      } else {
+        console.error('Error fetching point data:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching point data:', error);
+    }
   }
+
+  updateSaveBtn.addEventListener('click', async () => {
+    const updatedPoint = {
+      pointX: parseFloat(updatePointX.value),
+      pointY: parseFloat(updatePointY.value),
+      Name: updateName.value
+    };
+
+    try {
+      const response = await fetch(`http://localhost:5183/api/Point/updateUOW/${currentUpdateId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedPoint)
+      });
+
+      if (response.ok) {
+        console.log('Point updated successfully');
+        updatePanel.style.display = 'none';
+        await loadAllPoints();
+        await loadPointsTable();
+      } else {
+        console.error('Error updating point:', response.status);
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  });
+
+  updateCancelBtn.addEventListener('click', () => {
+    updatePanel.style.display = 'none';
+  });
 
   async function showPoint(id) {
     console.log('Show point with id:', id);
+    // Implement show functionality here
   }
 
   async function deletePoint(id) {
@@ -279,6 +387,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.error('Fetch error:', error);
     }
+  }
+
+  closeBtn.addEventListener('click', () => {
+    queryPanel.style.display = 'none';
+    if (dataTable) {
+      dataTable.destroy();
+      dataTable = null;
+    }
+  });
+
+  function makeResizable(api) {
+    const tableContainer = api.table().container();
+    const table = api.table().node();
+    
+    $(tableContainer).find('thead th').each(function(i) {
+      const th = $(this);
+      const resizer = $('<div class="table-resizer"></div>');
+      th.append(resizer);
+      
+      resizer.on('mousedown', function(e) {
+        const startX = e.pageX;
+        const startWidth = th.width();
+        
+        $(document).on('mousemove.resize', function(e) {
+          const width = startWidth + (e.pageX - startX);
+          th.width(width);
+          api.columns.adjust();
+        });
+        
+        $(document).on('mouseup.resize', function() {
+          $(document).off('mousemove.resize mouseup.resize');
+        });
+      });
+    });
   }
 
   await loadAllPoints();
