@@ -137,3 +137,56 @@ body {
 .jspanel button:hover {
   background-color: #1b8c17;
 }
+
+
+.query-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  display: none;
+  max-width: 80%;
+  max-height: 80%;
+  overflow: auto;
+}
+
+#points-table {
+  width: 100%;
+}
+
+#points-table th, #points-table td {
+  padding: 10px;
+  text-align: left;
+}
+
+#points-table th {
+  background-color: #f2f2f2;
+}
+
+.action-btn {
+  margin-right: 5px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.update-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.show-btn {
+  background-color: #2196F3;
+  color: white;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+}

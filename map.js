@@ -67,10 +67,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pointY = document.getElementById('pointY');
   const Name = document.getElementById('Name');
   const saveBtn = document.getElementById('save-btn');
+  const queryBtn = document.getElementById('query-btn');
+  const queryPanel = document.getElementById('query-panel');
   let interaction = null;
   let selectedFeature = null;
+  let dataTable;
 
-  // Yeni fonksiyon: Tüm noktaları yükle
   const loadAllPoints = async () => {
     try {
       const response = await fetch('http://localhost:5183/api/Point/getAllUOW', {
@@ -127,7 +129,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = await response.json();
         console.log('Point added:', data);
 
-        // Tüm noktaları yeniden yükle
         await loadAllPoints();
       } else {
         console.error('Error adding point:', response.status);
@@ -136,22 +137,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error('Fetch error:', error);
     }
 
-    // Paneli gizle ve imleci varsayılan hale getir
     panel.style.display = 'none';
     map.getViewport().style.cursor = 'default';
 
-    // Etkileşimi kaldır
     map.removeInteraction(interaction);
     interaction = null;
     
-    // Vurgulanan özelliği (mavi çember ve nokta) temizle
     map.getLayers().getArray()[3].getSource().clear();
   };
 
   document.getElementById('add-point-btn').addEventListener('click', () => {
     if (!interaction) {
       interaction = new ol.interaction.Select({
-        layers: [map.getLayers().getArray()[0]] // Seçim sadece harita katmanı
+        layers: [map.getLayers().getArray()[0]]
       });
 
       map.addInteraction(interaction);
@@ -165,7 +163,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       pointX.textContent = coord[0].toFixed(6);
       pointY.textContent = coord[1].toFixed(6);
 
-      // Haritaya nokta ekle
       const feature = new ol.Feature({
         geometry: new ol.geom.Point(event.coordinate),
         name: Name.value || 'Untitled'
@@ -173,16 +170,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       map.getLayers().getArray()[1].getSource().addFeature(feature);
 
-      // Vurgulama özelliği oluştur
       selectedFeature = new ol.Feature({
         geometry: new ol.geom.Point(event.coordinate)
       });
       selectedFeature.set('highlighted', true);
-      map.getLayers().getArray()[3].getSource().clear(); // Var olan vurgulamaları temizle
+      map.getLayers().getArray()[3].getSource().clear();
       map.getLayers().getArray()[3].getSource().addFeature(selectedFeature);
 
-      // Paneli göster
-      const circleRadius = 50; // Çemberin yarıçapı
+      const circleRadius = 50;
       const panelWidth = panel.offsetWidth;
       const panelHeight = panel.offsetHeight;
       const mapSize = map.getSize();
@@ -191,27 +186,100 @@ document.addEventListener('DOMContentLoaded', async () => {
       const xOffset = event.pixel[0] + 10;
       const yOffset = event.pixel[1] + 10;
 
-      // Paneli çemberin dışına taşımak için yeni konum hesaplama
       let panelLeft = xOffset;
       let panelTop = yOffset;
 
       if (xOffset + panelWidth > mapWidth) {
-        panelLeft = xOffset - panelWidth - 10; // Paneli sola kaydır
+        panelLeft = xOffset - panelWidth - 10;
       }
       if (yOffset + panelHeight > mapHeight) {
-        panelTop = yOffset - panelHeight - 10; // Paneli yukarı kaydır
+        panelTop = yOffset - panelHeight - 10;
       }
 
-      // Paneli görünür yap ve konumunu ayarla
       panel.style.left = `${Math.max(0, panelLeft)}px`;
       panel.style.top = `${Math.max(0, panelTop)}px`;
       panel.style.display = 'block';
 
-      // Kaydetme butonuna tıklama işlevini ekle
       saveBtn.addEventListener('click', handleSaveClick, { once: true });
     }
   });
 
-  // Sayfa yüklendiğinde tüm noktaları yükle
+  queryBtn.addEventListener('click', async () => {
+    queryPanel.style.display = 'block';
+    await loadPointsTable();
+  });
+
+  async function loadPointsTable() {
+    try {
+      const response = await fetch('http://localhost:5183/api/Point/getAllUOW');
+      const data = await response.json();
+
+      if (dataTable) {
+        dataTable.destroy();
+      }
+
+      dataTable = $('#points-table').DataTable({
+        data: data.value,
+        columns: [
+          { data: 'pointx' },
+          { data: 'pointy' },
+          { data: 'name' },
+          {
+            data: null,
+            render: function (data, type, row) {
+              return '<button class="action-btn update-btn" data-id="' + row.id + '">Update</button>' +
+                     '<button class="action-btn show-btn" data-id="' + row.id + '">Show</button>' +
+                     '<button class="action-btn delete-btn" data-id="' + row.id + '">Delete</button>';
+            }
+          }
+        ]
+      });
+
+      $('#points-table').on('click', '.update-btn', function() {
+        const id = $(this).data('id');
+        updatePoint(id);
+      });
+
+      $('#points-table').on('click', '.show-btn', function() {
+        const id = $(this).data('id');
+        showPoint(id);
+      });
+
+      $('#points-table').on('click', '.delete-btn', function() {
+        const id = $(this).data('id');
+        deletePoint(id);
+      });
+
+    } catch (error) {
+      console.error('Error loading points:', error);
+    }
+  }
+
+  async function updatePoint(id) {
+    console.log('Update point with id:', id);
+  }
+
+  async function showPoint(id) {
+    console.log('Show point with id:', id);
+  }
+
+  async function deletePoint(id) {
+    try {
+      const response = await fetch(`http://localhost:5183/api/Point/deleteUOW/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        console.log('Point deleted successfully');
+        await loadPointsTable();
+        await loadAllPoints();
+      } else {
+        console.error('Error deleting point:', response.status);
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  }
+
   await loadAllPoints();
 });
