@@ -1,42 +1,41 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const map = new ol.Map({
     target: 'map',
     layers: [
       new ol.layer.Tile({
         source: new ol.source.OSM()
       }),
-
       new ol.layer.Vector({
         source: new ol.source.Vector(),
         style: function(feature) {
           if (feature.get('selected')) {
             return new ol.style.Style({
               image: new ol.style.Circle({
-                radius: 3, // Kırmızı noktanın yarıçapı
-                fill: new ol.style.Fill({ color: 'blue' }) // Kırmızı noktanın dolgusu
+                radius: 3,
+                fill: new ol.style.Fill({ color: 'blue' })
               })
             });
           }
         }
       }),
-
+      new ol.layer.Vector({
+        source: new ol.source.Vector()
+      }),
       new ol.layer.Vector({
         source: new ol.source.Vector(),
         style: function(feature) {
           if (feature.get('highlighted')) {
             return new ol.style.Style({
-              // Çember stili
               image: new ol.style.Circle({
-                radius: 50, // Çemberin yarıçapı
-                fill: new ol.style.Fill({ color: 'rgba(113, 208, 229, 0.3)' }), // Çemberin dolgusu
+                radius: 50,
+                fill: new ol.style.Fill({ color: 'rgba(113, 208, 229, 0.3)' }),
                 stroke: new ol.style.Stroke({
-                  color: 'rgba(113, 208, 229, 0.8)', // Çemberin kenarlığı
-                  width: 1 // Çemberin kenarlık genişliği
+                  color: 'rgba(113, 208, 229, 0.8)',
+                  width: 1
                 })
               }),
-              // Merkezdeki kırmızı nokta stili
               text: new ol.style.Text({
-                text: '\u25CF', // Unicode karakteri: dolu daire
+                text: '\u25CF',
                 font: 'bold 10px Arial',
                 fill: new ol.style.Fill({ color: 'blue' }),
                 offsetX: 0,
@@ -53,6 +52,16 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   });
 
+  const pointStyle = new ol.style.Style({
+    image: new ol.style.Icon({
+      src: 'images/location.png',
+      scale: 0.15,
+      anchor: [0.5, 1]
+    })
+  });
+
+  const vectorSource = new ol.source.Vector();
+
   const panel = document.getElementById('panel');
   const pointX = document.getElementById('pointX');
   const pointY = document.getElementById('pointY');
@@ -61,7 +70,43 @@ document.addEventListener('DOMContentLoaded', () => {
   let interaction = null;
   let selectedFeature = null;
 
-  // Kaydetme butonuna tıklama işlevi
+  // Yeni fonksiyon: Tüm noktaları yükle
+  const loadAllPoints = async () => {
+    try {
+      const response = await fetch('http://localhost:5183/api/Point/getAllUOW', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.value && Array.isArray(data.value)) {
+          vectorSource.clear();
+          data.value.forEach(point => {
+            const feature = new ol.Feature({
+              geometry: new ol.geom.Point(ol.proj.fromLonLat([point.pointx, point.pointy])),
+              id: point.id,
+              name: point.name
+            });
+            feature.setStyle(pointStyle);
+            vectorSource.addFeature(feature);
+          });
+
+          map.getLayers().getArray()[2].setSource(vectorSource);
+        } else {
+          console.error('Unexpected response format. Expected data.value to be an array.');
+        }
+      } else {
+        console.error('Error getting points:', response.status);
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      alert('Veri alınamadı! Lütfen tekrar deneyin.');
+    }
+  };
+
   const handleSaveClick = async () => {
     const point = {
       pointX: parseFloat(pointX.textContent),
@@ -82,10 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await response.json();
         console.log('Point added:', data);
 
-        // Özelliği, sunucudan dönen ID ile güncelle
-        if (selectedFeature) {
-          selectedFeature.setId(data.id);
-        }
+        // Tüm noktaları yeniden yükle
+        await loadAllPoints();
       } else {
         console.error('Error adding point:', response.status);
       }
@@ -100,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Etkileşimi kaldır
     map.removeInteraction(interaction);
     interaction = null;
+    
+    // Vurgulanan özelliği (mavi çember ve nokta) temizle
+    map.getLayers().getArray()[3].getSource().clear();
   };
 
   document.getElementById('add-point-btn').addEventListener('click', () => {
@@ -132,8 +178,8 @@ document.addEventListener('DOMContentLoaded', () => {
         geometry: new ol.geom.Point(event.coordinate)
       });
       selectedFeature.set('highlighted', true);
-      map.getLayers().getArray()[2].getSource().clear(); // Var olan vurgulamaları temizle
-      map.getLayers().getArray()[2].getSource().addFeature(selectedFeature);
+      map.getLayers().getArray()[3].getSource().clear(); // Var olan vurgulamaları temizle
+      map.getLayers().getArray()[3].getSource().addFeature(selectedFeature);
 
       // Paneli göster
       const circleRadius = 50; // Çemberin yarıçapı
@@ -165,4 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
       saveBtn.addEventListener('click', handleSaveClick, { once: true });
     }
   });
+
+  // Sayfa yüklendiğinde tüm noktaları yükle
+  await loadAllPoints();
 });
