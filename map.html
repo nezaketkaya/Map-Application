@@ -16,11 +16,15 @@
         <div class="navbar-buttons">
             <button id="add-point-btn">Add Point</button>
             <button id="query-btn">Query</button>
+            <button id="add-linestring-btn">Add LineString</button>
+            <button id="add-polygon-btn">Add Polygon</button>
         </div>
     </div>
 
     <div id="map" class="map"></div>
 
+    <div id="notification" class="notification"></div>
+    
     <div id="panel" class="jspanel">
         <button class="close-panel-btn">&times;</button>
         <p><strong>X Coordinate:</strong> <span id="pointX"></span></p>
@@ -75,6 +79,6 @@
         <button id="update-cancel-btn">Cancel</button>
     </div>
     <button id="return-to-panel" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000;">Return to Panel</button>
-    <script src="map.js"></script>
+    <script type="module" src="map.js"></script>
 </body>
 </html>

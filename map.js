@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     mapUpdate: document.getElementById('map-update'),
     returnToPanel: document.getElementById('return-to-panel'),
     closeUpdateOptions: document.querySelector('.close-update-options'),
-    mapUpdateSaveBtn: document.createElement('button')
+    mapUpdateSaveBtn: document.createElement('button'),
+    notification: document.getElementById('notification')
   };
   
   elements.mapUpdateSaveBtn.id = 'mapUpdateSaveBtn';
@@ -125,6 +126,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  // Notification function
+  function showNotification(message, type) {
+    elements.notification.textContent = message;
+    elements.notification.className = `notification ${type}`;
+    elements.notification.style.display = 'block';
+
+    setTimeout(() => {
+      elements.notification.style.display = 'none';
+    }, 3000);
+  }
+
   // Load all points
   async function loadAllPoints() {
     try {
@@ -142,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (error) {
       console.error('Error loading points:', error);
-      alert('Data not loaded!');
+      showNotification('Failed to load points. Please try again.', 'error');
     }
   }
 
@@ -158,8 +170,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       await api.addPoint(point);
       await loadAllPoints();
       resetUI();
+      showNotification('Point added successfully!', 'success');
     } catch (error) {
       console.error('Error adding point:', error);
+      showNotification('Failed to add point. Please try again.', 'error');
     }
   }
 
@@ -198,8 +212,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       map.getViewport().style.cursor = 'default';
       await loadAllPoints();
       await loadPointsTable();
+      showNotification('Point updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating point:', error);
+      showNotification('Failed to update point. Please try again.', 'error');
     }
   }
 
@@ -306,6 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       addTableEventListeners();
     } catch (error) {
       console.error('Error loading points:', error);
+      showNotification('Failed to load points table. Please try again.', 'error');
     }
   }
 
@@ -324,12 +341,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       showDeleteConfirmation($(this).data('id'));
     });
 
-    // Yeni kapatma butonu için event listener ekleyelim
     elements.closeUpdateOptions.addEventListener('click', () => {
       elements.updateOptions.style.display = 'none';
     });
 
-    // Modal dışına tıklandığında da kapanmasını sağlayalım
     window.addEventListener('click', (event) => {
       if (event.target == elements.updateOptions) {
         elements.updateOptions.style.display = 'none';
@@ -352,30 +367,25 @@ document.addEventListener('DOMContentLoaded', async () => {
           elements.updateOptions.style.display = 'none';
           elements.queryPanel.style.display = 'none';
 
-          // Seçilen noktayı bul ve vurgula
           selectedFeature = vectorSource.getFeatures().find(f => f.get('id') === id);
           if (selectedFeature) {
             selectedFeature.setStyle(styles.selected);
             
-            // Haritayı seçilen noktaya odakla
             map.getView().animate({
               center: selectedFeature.getGeometry().getCoordinates(),
               zoom: 7,
               duration: 1000
             });
 
-            // Sürükleme etkileşimini ekle
             dragInteraction = new ol.interaction.Translate({
               features: new ol.Collection([selectedFeature])
             });
             map.addInteraction(dragInteraction);
 
-            // Sürükleme bittiğinde saveButton'u göster
             dragInteraction.on('translateend', () => {
               elements.mapUpdateSaveBtn.style.display = 'block';
             });
 
-            // Save butonuna tıklandığında
             elements.mapUpdateSaveBtn.onclick = async () => {
               const newCoord = ol.proj.toLonLat(selectedFeature.getGeometry().getCoordinates());
               const updatedPoint = {
@@ -388,9 +398,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await api.updatePoint(id, updatedPoint);
                 resetMapUpdateUI();
                 await loadAllPoints();
-                // Veri panelini gösterme ve tabloyu güncelleme işlemini kaldırdık
+                showNotification('Point updated successfully!', 'success');
               } catch (error) {
                 console.error('Error updating point:', error);
+                showNotification('Failed to update point. Please try again.', 'error');
               }
             };
           }
@@ -398,9 +409,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (error) {
       console.error('Error fetching point data:', error);
+      showNotification('Failed to fetch point data. Please try again.', 'error');
     }
   }
-  
   
   // Map update UI'ı sıfırla
   function resetMapUpdateUI() {
@@ -411,21 +422,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       selectedFeature.setStyle(null);
     }
     elements.mapUpdateSaveBtn.style.display = 'none';
-    // Veri panelini gösterme işlemini kaldırdık
   }
 
   // Show point
   function showPoint(id) {
     const feature = vectorSource.getFeatures().find(f => f.get('id') === id);
     if (feature) {
-      // Mevcut zoom ve merkez bilgilerini kaydedelim
       previousZoom = map.getView().getZoom();
       previousCenter = map.getView().getCenter();
 
-      // Query panelini gizleyelim
       elements.queryPanel.style.display = 'none';
-
-      // Return to Panel butonunu gösterelim
       elements.returnToPanel.style.display = 'block';
 
       map.getView().animate({
@@ -437,17 +443,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   elements.returnToPanel.addEventListener('click', () => {
-    // Önceki zoom ve merkez konumuna dönelim
     map.getView().animate({
       center: previousCenter,
       zoom: previousZoom,
       duration: 1000
     });
 
-    // Query panelini tekrar gösterelim
     elements.queryPanel.style.display = 'block';
-
-    // Return to Panel butonunu gizleyelim
     elements.returnToPanel.style.display = 'none';
   });
 
@@ -465,10 +467,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadPointsTable();
       await loadAllPoints();
       elements.confirmationPanel.style.display = 'none';
-      alert("Point deleted successfully.");
+      showNotification('Point deleted successfully!', 'success');
     } catch (error) {
       console.error('Error deleting point:', error);
-      alert("An error occurred while deleting the point. Please try again.");
+      showNotification('Failed to delete point. Please try again.', 'error');
     }
   }
 
@@ -525,41 +527,44 @@ document.addEventListener('DOMContentLoaded', async () => {
       elements.updatePanel.style.display = 'none';
       await loadAllPoints();
       await loadPointsTable();
+      showNotification('Point updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating point:', error);
+      showNotification('Failed to update point. Please try again.', 'error');
     }
   });
 
   elements.updateCancelBtn.addEventListener('click', () => {
     elements.updatePanel.style.display = 'none';
   });
-      elements.closeBtn.addEventListener('click', () => {
-        elements.queryPanel.style.display = 'none';
-        if (dataTable) {
-          dataTable.destroy();
-          dataTable = null;
-        }
-      });
-  
-      elements.panelUpdate.addEventListener('click', () => {
-        updatePoint(currentUpdateId, 'panel');
-        elements.updateOptions.style.display = 'none';
-      });
-  
-      elements.mapUpdate.addEventListener('click', () => {
-        updatePoint(currentUpdateId, 'map');
-        elements.updateOptions.style.display = 'none';
-      });
-  
-      // Close panel button event listener
-      document.querySelector('.close-panel-btn').addEventListener('click', () => {
-        elements.panel.style.display = 'none';
-        resetUI();
-      });
-  
-      // Initialize
-      initializeMap();
-      map.on('click', handleMapClick);
-      await loadAllPoints();
-      addTableEventListeners();
-    });
+
+  elements.closeBtn.addEventListener('click', () => {
+    elements.queryPanel.style.display = 'none';
+    if (dataTable) {
+      dataTable.destroy();
+      dataTable = null;
+    }
+  });
+
+  elements.panelUpdate.addEventListener('click', () => {
+    updatePoint(currentUpdateId, 'panel');
+    elements.updateOptions.style.display = 'none';
+  });
+
+  elements.mapUpdate.addEventListener('click', () => {
+    updatePoint(currentUpdateId, 'map');
+    elements.updateOptions.style.display = 'none';
+  });
+
+  // Close panel button event listener
+  document.querySelector('.close-panel-btn').addEventListener('click', () => {
+    elements.panel.style.display = 'none';
+    resetUI();
+  });
+
+  // Initialize
+  initializeMap();
+  map.on('click', handleMapClick);
+  await loadAllPoints();
+  addTableEventListeners();
+});
