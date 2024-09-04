@@ -2,7 +2,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const BASE_URL = 'http://localhost:5183';
   let map, vectorSource, interaction, dataTable, currentUpdateId;
   let mapUpdateMode = false;
-  
+  let drawInteraction;
+  let lineStringFeature;
+  let polygonFeature;
+
   // DOM Elements
   const elements = {
     panel: document.getElementById('panel'),
@@ -29,7 +32,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     returnToPanel: document.getElementById('return-to-panel'),
     closeUpdateOptions: document.querySelector('.close-update-options'),
     mapUpdateSaveBtn: document.createElement('button'),
-    notification: document.getElementById('notification')
+    notification: document.getElementById('notification'),
+    addLineStringBtn: document.getElementById('add-linestring-btn'),
+    lineStringPanel: document.getElementById('linestring-panel'),
+    lineStringName: document.getElementById('linestring-name'),
+    saveLineStringBtn: document.getElementById('save-linestring-btn'),
+    addPolygonBtn: document.getElementById('add-polygon-btn'),
+    polygonPanel: document.getElementById('polygon-panel'),
+    polygonName: document.getElementById('polygon-name'),
+    savePolygonBtn: document.getElementById('save-polygon-btn')
   };
   
   elements.mapUpdateSaveBtn.id = 'mapUpdateSaveBtn';
@@ -68,12 +79,30 @@ document.addEventListener('DOMContentLoaded', async () => {
           width: 1
         })
       })
+    }),
+    lineString: new ol.style.Style({
+      stroke: new ol.style.Stroke({
+        color: 'blue',
+        width: 3
+      })
+    }),
+    polygon: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: 'rgba(255, 255, 255, 0.2)'
+      }),
+      stroke: new ol.style.Stroke({
+        color: '#ffcc33',
+        width: 2
+      })
     })
   };
 
   // Initialize map
   function initializeMap() {
+    console.log('Initializing map...');
     vectorSource = new ol.source.Vector();
+    const lineStringVectorSource = new ol.source.Vector();
+    const polygonVectorSource = new ol.source.Vector();
     map = new ol.Map({
       target: 'map',
       layers: [
@@ -85,6 +114,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         new ol.layer.Vector({
           source: new ol.source.Vector(),
           style: feature => feature.get('highlighted') ? styles.highlighted : null
+        }),
+        new ol.layer.Vector({
+          source: lineStringVectorSource,
+          style: styles.lineString
+        }),
+        new ol.layer.Vector({
+          source: polygonVectorSource,
+          style: styles.polygon
         })
       ],
       view: new ol.View({
@@ -92,42 +129,94 @@ document.addEventListener('DOMContentLoaded', async () => {
         zoom: 6.7
       })
     });
+    console.log('Map initialized');
   }
 
   // API calls
   const api = {
     async fetchAllPoints() {
+      console.log('Fetching all points...');
       const response = await fetch(`${BASE_URL}/api/Point`);
       if (!response.ok) throw new Error('Failed to fetch points');
-      return response.json();
+      const data = await response.json();
+      console.log('Fetched points:', data);
+      return data;
     },
     async addPoint(point) {
+      console.log('Adding point:', point);
       const response = await fetch(`${BASE_URL}/api/Point`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(point)
       });
       if (!response.ok) throw new Error('Failed to add point');
-      return response.json();
+      const data = await response.json();
+      console.log('Added point:', data);
+      return data;
     },
     async updatePoint(id, point) {
+      console.log('Updating point:', id, point);
       const response = await fetch(`${BASE_URL}/api/Point/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(point)
       });
       if (!response.ok) throw new Error('Failed to update point');
+      console.log('Point updated successfully');
     },
     async deletePoint(id) {
+      console.log('Deleting point:', id);
       const response = await fetch(`${BASE_URL}/api/Point/${id}`, {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Failed to delete point');
-    }
+      console.log('Point deleted successfully');
+    },
+    async addLineString(lineString) {
+      console.log('Adding LineString:', lineString);
+      const response = await fetch(`${BASE_URL}/api/LineString`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lineString)
+      });
+      if (!response.ok) throw new Error('Failed to add lineString');
+      const data = await response.json();
+      console.log('Added LineString:', data);
+      return data;
+    },
+    async fetchAllLineStrings() {
+      console.log('Fetching all LineStrings...');
+      const response = await fetch(`${BASE_URL}/api/LineString`);
+      if (!response.ok) throw new Error('Failed to fetch LineStrings');
+      const data = await response.json();
+      console.log('Fetched LineStrings:', data);
+      return data;
+    },
+    async addPolygon(polygon) {
+      console.log('Adding Polygon:', polygon);
+      const response = await fetch(`${BASE_URL}/api/Polygon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(polygon)
+      });
+      if (!response.ok) throw new Error('Failed to add polygon');
+      const data = await response.json();
+      console.log('Added Polygon:', data);
+      return data;
+    },
+    async fetchAllPolygons() {
+      console.log('Fetching all Polygons...');
+      const response = await fetch(`${BASE_URL}/api/Polygon`);
+      if (!response.ok) throw new Error('Failed to fetch Polygons');
+      const data = await response.json();
+      console.log('Fetched Polygons:', data);
+      return data;
+    },
   };
 
   // Notification function
   function showNotification(message, type) {
+    console.log('Showing notification:', message, type);
     elements.notification.textContent = message;
     elements.notification.className = `notification ${type}`;
     elements.notification.style.display = 'block';
@@ -139,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load all points
   async function loadAllPoints() {
+    console.log('Loading all points...');
     try {
       const data = await api.fetchAllPoints();
       if (data && data.value && Array.isArray(data.value)) {
@@ -151,6 +241,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
           vectorSource.addFeature(feature);
         });
+        console.log(`Added ${data.value.length} points to the map`);
+      } else {
+        console.log('No points data or invalid data structure');
       }
     } catch (error) {
       console.error('Error loading points:', error);
@@ -158,8 +251,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  async function loadAllLineStrings() {
+    console.log('Loading all LineStrings...');
+    try {
+      const data = await api.fetchAllLineStrings();
+      if (data && data.value && Array.isArray(data.value)) {
+        const lineStringSource = map.getLayers().getArray()[3].getSource();
+        lineStringSource.clear();
+        data.value.forEach(lineString => {
+          const coordinates = lineString.coordinates.split(',').map(Number);
+          const projectedCoords = [];
+          for (let i = 0; i < coordinates.length; i += 2) {
+            projectedCoords.push(ol.proj.fromLonLat([coordinates[i], coordinates[i + 1]]));
+          }
+          const feature = new ol.Feature({
+            geometry: new ol.geom.LineString(projectedCoords),
+            id: lineString.id,
+            name: lineString.name
+          });
+          lineStringSource.addFeature(feature);
+        });
+        console.log(`Added ${data.value.length} LineStrings to the map`);
+      } else {
+        console.log('No LineString data or invalid data structure');
+      }
+    } catch (error) {
+      console.error('Error loading LineStrings:', error);
+      showNotification('Failed to load LineStrings. Please try again.', 'error');
+    }
+  }
+
+  async function loadAllPolygons() {
+    console.log('Loading all Polygons...');
+    try {
+      const data = await api.fetchAllPolygons();
+      if (data && data.value && Array.isArray(data.value)) {
+        const polygonSource = map.getLayers().getArray()[4].getSource();
+        polygonSource.clear();
+        data.value.forEach(polygon => {
+          const coordinates = polygon.coordinates.split(',').map(Number);
+          const projectedCoords = [];
+          for (let i = 0; i < coordinates.length; i += 2) {
+            projectedCoords.push(ol.proj.fromLonLat([coordinates[i], coordinates[i + 1]]));
+          }
+          const feature = new ol.Feature({
+            geometry: new ol.geom.Polygon([projectedCoords]),
+            id: polygon.id,
+            name: polygon.name
+          });
+          polygonSource.addFeature(feature);
+        });
+        console.log(`Added ${data.value.length} Polygons to the map`);
+      } else {
+        console.log('No Polygon data or invalid data structure');
+      }
+    } catch (error) {
+      console.error('Error loading Polygons:', error);
+      showNotification('Failed to load Polygons. Please try again.', 'error');
+    }
+  }
+
   // Handle save click
   async function handleSaveClick() {
+    console.log('Handling save click');
     const point = {
       pointX: parseFloat(elements.pointX.textContent),
       pointY: parseFloat(elements.pointY.textContent),
@@ -179,6 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Reset UI after point addition
   function resetUI() {
+    console.log('Resetting UI');
     elements.panel.style.display = 'none';
     map.getViewport().style.cursor = 'default';
     map.removeInteraction(interaction);
@@ -195,6 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle map click
   function handleMapClick(event) {
+    console.log('Map clicked');
     if (mapUpdateMode) {
       handleMapUpdateMode(event);
     } else if (interaction) {
@@ -204,6 +360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle map update mode
   async function handleMapUpdateMode(event) {
+    console.log('Handling map update mode');
     const coord = ol.proj.toLonLat(event.coordinate);
     const updatedPoint = { pointX: coord[0], pointY: coord[1] };
     try {
@@ -221,6 +378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle point addition
   function handlePointAddition(event) {
+    console.log('Handling point addition');
     const coord = ol.proj.toLonLat(event.coordinate);
     elements.pointX.textContent = coord[0].toFixed(6);
     elements.pointY.textContent = coord[1].toFixed(6);
@@ -255,6 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Position panel
   function positionPanel(event) {
+    console.log('Positioning panel');
     const panelWidth = elements.panel.offsetWidth;
     const panelHeight = elements.panel.offsetHeight;
     const mapSize = map.getSize();
@@ -273,6 +432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load points table
   async function loadPointsTable() {
+    console.log('Loading points table');
     try {
       const data = await api.fetchAllPoints();
 
@@ -328,6 +488,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Add table event listeners
   function addTableEventListeners() {
+    console.log('Adding table event listeners');
     $('#points-table').on('click', '.update-btn', function() {
       currentUpdateId = $(this).data('id');
       elements.updateOptions.style.display = 'block';
@@ -354,6 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Update point
   async function updatePoint(id, method) {
+    console.log('Updating point:', id, method);
     try {
       const data = await api.fetchAllPoints();
       const point = data.value.find(p => p.id === id);
@@ -413,8 +575,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   
-  // Map update UI'ı sıfırla
+  // Reset map update UI
   function resetMapUpdateUI() {
+    console.log('Resetting map update UI');
     if (dragInteraction) {
       map.removeInteraction(dragInteraction);
     }
@@ -426,6 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Show point
   function showPoint(id) {
+    console.log('Showing point:', id);
     const feature = vectorSource.getFeatures().find(f => f.get('id') === id);
     if (feature) {
       previousZoom = map.getView().getZoom();
@@ -442,19 +606,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   
-  elements.returnToPanel.addEventListener('click', () => {
-    map.getView().animate({
-      center: previousCenter,
-      zoom: previousZoom,
-      duration: 1000
-    });
-
-    elements.queryPanel.style.display = 'block';
-    elements.returnToPanel.style.display = 'none';
-  });
-
   // Show delete confirmation
   function showDeleteConfirmation(id) {
+    console.log('Showing delete confirmation for:', id);
     elements.confirmationPanel.style.display = 'block';
     elements.confirmDelete.onclick = () => deletePoint(id);
     elements.cancelDelete.onclick = () => elements.confirmationPanel.style.display = 'none';
@@ -462,6 +616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Delete point
   async function deletePoint(id) {
+    console.log('Deleting point:', id);
     try {
       await api.deletePoint(id);
       await loadPointsTable();
@@ -476,6 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Make table resizable
   function makeResizable(api) {
+    console.log('Making table resizable');
     const tableContainer = api.table().container();
     $(tableContainer).find('thead th').each(function(i) {
       const th = $(this);
@@ -499,8 +655,143 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  function startPolygonDraw() {
+    console.log('Starting Polygon draw');
+    closePolygonPanel();
+    
+    drawInteraction = new ol.interaction.Draw({
+      source: map.getLayers().getArray()[4].getSource(),
+      type: 'Polygon'
+    });
+
+    map.addInteraction(drawInteraction);
+    map.getViewport().style.cursor = 'crosshair';
+
+    drawInteraction.on('drawend', (event) => {
+      polygonFeature = event.feature;
+      showPolygonNamePanel();
+    });
+  }
+
+  function showPolygonNamePanel() {
+    console.log('Showing Polygon name panel');
+    elements.polygonPanel.style.display = 'block';
+    positionPanel(elements.polygonPanel);
+  }
+
+  async function savePolygon() {
+    console.log('Saving Polygon');
+    const name = elements.polygonName.value;
+    const coordinates = polygonFeature.getGeometry().getCoordinates()[0]; // İlk halka
+    
+    const flatCoordinates = coordinates.flatMap(coord => {
+      const [lon, lat] = ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
+      return [lon.toFixed(6), lat.toFixed(6)];
+    });
+
+    const polygon = {
+      name: name,
+      coordinates: flatCoordinates.join(',')
+    };
+
+    try {
+      await api.addPolygon(polygon);
+      showNotification('Polygon added successfully!', 'success');
+      closePolygonPanel();
+      await loadAllPolygons();
+    } catch (error) {
+      console.error('Error adding Polygon:', error);
+      showNotification('Failed to add Polygon. Please try again.', 'error');
+    }
+  }
+
+  function closePolygonPanel() {
+    console.log('Closing Polygon panel and resetting UI');
+    elements.polygonPanel.style.display = 'none';
+    elements.polygonName.value = '';
+    map.removeInteraction(drawInteraction);
+    map.getViewport().style.cursor = 'default';
+  }
+
+  // LineString drawing function
+  function startLineStringDraw() {
+    console.log('Starting LineString draw');
+    closeLineStringPanel(); // Clear previous drawing
+    
+    drawInteraction = new ol.interaction.Draw({
+      source: map.getLayers().getArray()[3].getSource(),
+      type: 'LineString'
+    });
+  
+    map.addInteraction(drawInteraction);
+    map.getViewport().style.cursor = 'crosshair';
+  
+    drawInteraction.on('drawend', (event) => {
+      lineStringFeature = event.feature;
+      showLineStringNamePanel();
+    });
+  }
+
+  // Show LineString name panel
+  function showLineStringNamePanel() {
+    console.log('Showing LineString name panel');
+    elements.lineStringPanel.style.display = 'block';
+    positionPanel(elements.lineStringPanel);
+  }
+
+  // Save LineString function
+  async function saveLineString() {
+    console.log('Saving LineString');
+    const name = elements.lineStringName.value;
+    const coordinates = lineStringFeature.getGeometry().getCoordinates();
+    
+    const flatCoordinates = coordinates.flatMap(coord => {
+      const [lon, lat] = ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
+      return [lon.toFixed(6), lat.toFixed(6)];
+    });
+  
+    const lineString = {
+      name: name,
+      coordinates: flatCoordinates.join(',')
+    };
+  
+    try {
+      await api.addLineString(lineString);
+      showNotification('LineString added successfully!', 'success');
+      closeLineStringPanel();
+      await loadAllLineStrings(); // Update map
+    } catch (error) {
+      console.error('Error adding LineString:', error);
+      showNotification('Failed to add LineString. Please try again.', 'error');
+    }
+  }
+  
+  // Close LineString panel and reset UI
+  function closeLineStringPanel() {
+    console.log('Closing LineString panel and resetting UI');
+    elements.lineStringPanel.style.display = 'none';
+    elements.lineStringName.value = '';
+    map.removeInteraction(drawInteraction);
+    map.getViewport().style.cursor = 'default';
+  }
+
   // Event listeners
+  elements.addPolygonBtn.addEventListener('click', startPolygonDraw);
+
+  elements.savePolygonBtn.addEventListener('click', savePolygon);
+
+  // Polygon panel close button event listener
+  document.querySelector('#polygon-panel .close-panel-btn').addEventListener('click', closePolygonPanel);
+
+  elements.addLineStringBtn.addEventListener('click', startLineStringDraw);
+
+  elements.saveLineStringBtn.addEventListener('click', saveLineString);
+
+  // LineString panel close button event listener
+  document.querySelector('#linestring-panel .close-panel-btn').addEventListener('click', closeLineStringPanel);
+
   elements.addPointBtn.addEventListener('click', () => {
+    console.log('Add point button clicked');
     if (!interaction) {
       interaction = new ol.interaction.Select({
         layers: [map.getLayers().getArray()[0]]
@@ -511,11 +802,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   elements.queryBtn.addEventListener('click', async () => {
+    console.log('Query button clicked');
     elements.queryPanel.style.display = 'block';
     await loadPointsTable();
   });
 
   elements.updateSaveBtn.addEventListener('click', async () => {
+    console.log('Update save button clicked');
     const updatedPoint = {
       pointX: parseFloat(elements.updatePointX.value),
       pointY: parseFloat(elements.updatePointY.value),
@@ -535,10 +828,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   elements.updateCancelBtn.addEventListener('click', () => {
+    console.log('Update cancel button clicked');
     elements.updatePanel.style.display = 'none';
   });
 
   elements.closeBtn.addEventListener('click', () => {
+    console.log('Close button clicked');
     elements.queryPanel.style.display = 'none';
     if (dataTable) {
       dataTable.destroy();
@@ -547,24 +842,52 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   elements.panelUpdate.addEventListener('click', () => {
+    console.log('Panel update button clicked');
     updatePoint(currentUpdateId, 'panel');
     elements.updateOptions.style.display = 'none';
   });
 
   elements.mapUpdate.addEventListener('click', () => {
+    console.log('Map update button clicked');
     updatePoint(currentUpdateId, 'map');
     elements.updateOptions.style.display = 'none';
   });
 
   // Close panel button event listener
   document.querySelector('.close-panel-btn').addEventListener('click', () => {
+    console.log('Close panel button clicked');
     elements.panel.style.display = 'none';
     resetUI();
   });
 
+  elements.returnToPanel.addEventListener('click', () => {
+    console.log('Returning to panel');
+    map.getView().animate({
+      center: previousCenter,
+      zoom: previousZoom,
+      duration: 1000
+    });
+
+    elements.queryPanel.style.display = 'block';
+    elements.returnToPanel.style.display = 'none';
+  });
+
   // Initialize
-  initializeMap();
-  map.on('click', handleMapClick);
-  await loadAllPoints();
-  addTableEventListeners();
+  try {
+    console.log('Starting initialization...');
+    initializeMap();
+    console.log('Map initialized, loading points...');
+    await loadAllPoints();
+    console.log('Points loaded, loading LineStrings...');
+    await loadAllLineStrings();
+    console.log('LineStrings loaded, loading Polygons...');
+    await loadAllPolygons();
+    console.log('Polygons loaded, setting up event listeners...');
+    map.on('click', handleMapClick);
+    addTableEventListeners();
+    console.log('Initialization complete');
+  } catch (error) {
+    console.error('Error during initialization:', error);
+    showNotification('An error occurred during initialization. Please refresh the page.', 'error');
+  }
 });

@@ -24,7 +24,7 @@
     <div id="map" class="map"></div>
 
     <div id="notification" class="notification"></div>
-    
+
     <div id="panel" class="jspanel">
         <button class="close-panel-btn">&times;</button>
         <p><strong>X Coordinate:</strong> <span id="pointX"></span></p>
@@ -33,6 +33,22 @@
         <input type="text" id="Name">
         <button id="save-btn">Save</button>
     </div>
+
+    <div id="polygon-panel" class="jspanel" style="display: none;">
+        <button class="close-panel-btn">×</button>
+        <h3>Add Polygon</h3>
+        <input type="text" id="polygon-name" placeholder="Enter polygon name">
+        <button id="save-polygon-btn">Save</button>
+    </div>
+
+    <div id="linestring-panel" class="jspanel" style="display: none;">
+        <button class="close-panel-btn">×</button>
+        <h3>Add LineString</h3>
+        <label for="linestring-name">Name:</label>
+        <input type="text" id="linestring-name" name="linestring-name">
+        <button id="save-linestring-btn">Save</button>
+      </div>
+
 
     <div id="query-panel" class="query-panel">
         <div class="table-header">
