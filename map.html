@@ -15,9 +15,11 @@
     <div class="navbar">
         <div class="navbar-buttons">
             <button id="add-point-btn">Add Point</button>
-            <button id="query-btn">Query</button>
+            <button id="query-btn">Query Points</button>
             <button id="add-linestring-btn">Add LineString</button>
+            <button id="query-linestring-btn">Query LineStrings</button>
             <button id="add-polygon-btn">Add Polygon</button>
+            <button id="query-polygon-btn">Query Polygons</button>
         </div>
     </div>
 
@@ -34,42 +36,80 @@
         <button id="save-btn">Save</button>
     </div>
 
-    <div id="polygon-panel" class="jspanel" style="display: none;">
-        <button class="close-panel-btn">×</button>
-        <h3>Add Polygon</h3>
-        <input type="text" id="polygon-name" placeholder="Enter polygon name">
-        <button id="save-polygon-btn">Save</button>
-    </div>
-
     <div id="linestring-panel" class="jspanel" style="display: none;">
         <button class="close-panel-btn">×</button>
         <h3>Add LineString</h3>
         <label for="linestring-name">Name:</label>
         <input type="text" id="linestring-name" name="linestring-name">
         <button id="save-linestring-btn">Save</button>
-      </div>
+    </div>
 
+    <div id="polygon-panel" class="jspanel" style="display: none;">
+        <button class="close-panel-btn">×</button>
+        <h3>Add Polygon</h3>
+        <label for="polygon-name">Name:</label>
+        <input type="text" id="polygon-name" name="polygon-name">
+        <button id="save-polygon-btn">Save</button>
+    </div>
 
     <div id="query-panel" class="query-panel">
         <div class="table-header">
             <h2>Points Table</h2>
             <button class="close-btn">&times;</button>
         </div>
-        <table id="points-table">
-            <thead>
-                <tr>
-                    <th>X</th>
-                    <th>Y</th>
-                    <th>Name</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <div class="table-container">
+            <table id="points-table">
+                <thead>
+                    <tr>
+                        <th>X</th>
+                        <th>Y</th>
+                        <th>Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="linestring-query-panel" class="query-panel">
+        <div class="table-header">
+            <h2>LineStrings Table</h2>
+            <button class="close-btn">&times;</button>
+        </div>
+        <div class="table-container">
+            <table id="linestrings-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="polygon-query-panel" class="query-panel">
+        <div class="table-header">
+            <h2>Polygons Table</h2>
+            <button class="close-btn">&times;</button>
+        </div>
+        <div class="table-container">
+            <table id="polygons-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
 
     <div id="confirmation-panel" class="confirmation-panel" style="display: none;">
-        <p>Are you sure you want to delete this point?</p>
+        <p>Are you sure you want to delete this item?</p>
         <button id="confirm-delete">Yes, Delete</button>
         <button id="cancel-delete">Cancel</button>
     </div>
@@ -94,7 +134,12 @@
         <button id="update-save-btn">Save</button>
         <button id="update-cancel-btn">Cancel</button>
     </div>
-    <button id="return-to-panel" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000;">Return to Panel</button>
+
+    <button id="return-to-panel" style="display: none;">Return to Panel</button>
+
+    <button id="finish-drawing" style="display: none;">Finish Drawing</button>
+    <button id="finish-polygon-drawing" style="display: none;">Finish Polygon Drawing</button>
+
     <script type="module" src="map.js"></script>
 </body>
 </html>

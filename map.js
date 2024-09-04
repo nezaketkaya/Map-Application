@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const BASE_URL = 'http://localhost:5183';
-  let map, vectorSource, interaction, dataTable, currentUpdateId;
+  let map, vectorSource, interaction, dataTable, lineStringDataTable, polygonDataTable, currentUpdateId;
   let mapUpdateMode = false;
   let drawInteraction;
   let lineStringFeature;
@@ -34,13 +34,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     mapUpdateSaveBtn: document.createElement('button'),
     notification: document.getElementById('notification'),
     addLineStringBtn: document.getElementById('add-linestring-btn'),
+    queryLineStringBtn: document.getElementById('query-linestring-btn'),
+    finishDrawingBtn: document.getElementById('finish-drawing'),
     lineStringPanel: document.getElementById('linestring-panel'),
+    lineStringQueryPanel: document.getElementById('linestring-query-panel'),
     lineStringName: document.getElementById('linestring-name'),
     saveLineStringBtn: document.getElementById('save-linestring-btn'),
     addPolygonBtn: document.getElementById('add-polygon-btn'),
+    queryPolygonBtn: document.getElementById('query-polygon-btn'),
+    finishPolygonDrawingBtn: document.getElementById('finish-polygon-drawing'),
     polygonPanel: document.getElementById('polygon-panel'),
+    polygonQueryPanel: document.getElementById('polygon-query-panel'),
     polygonName: document.getElementById('polygon-name'),
-    savePolygonBtn: document.getElementById('save-polygon-btn')
+    savePolygonBtn: document.getElementById('save-polygon-btn'),
+    closeLineStringBtn: document.querySelector('#linestring-query-panel .close-btn'),
+  closePolygonBtn: document.querySelector('#polygon-query-panel .close-btn'),
   };
   
   elements.mapUpdateSaveBtn.id = 'mapUpdateSaveBtn';
@@ -192,6 +200,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('Fetched LineStrings:', data);
       return data;
     },
+    async deleteLineString(id) {
+      console.log('Deleting LineString:', id);
+      const response = await fetch(`${BASE_URL}/api/LineString/${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete LineString');
+      console.log('LineString deleted successfully');
+    },
     async addPolygon(polygon) {
       console.log('Adding Polygon:', polygon);
       const response = await fetch(`${BASE_URL}/api/Polygon`, {
@@ -211,6 +227,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await response.json();
       console.log('Fetched Polygons:', data);
       return data;
+    },
+    async deletePolygon(id) {
+      console.log('Deleting Polygon:', id);
+      const response = await fetch(`${BASE_URL}/api/Polygon/${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete Polygon');
+      console.log('Polygon deleted successfully');
     },
   };
 
@@ -456,8 +480,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             `
           }
         ],
+        scrollY: '100%',
         scrollX: true,
-        scrollY: '400px',
         scrollCollapse: true,
         paging: true,
         columnDefs: [
@@ -475,14 +499,131 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             });
           });
-          makeResizable(this.api());
+          
+          // Yeniden boyutlandırma işlemi tamamlandığında tabloyu yeniden çiz
+          var resizeTimer;
+          $('.dataTables_wrapper').on('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+              dataTable.columns.adjust().draw();
+            }, 250);
+          });
         }
       });
 
       addTableEventListeners();
+
+      // ResizeObserver API'sini kullanarak daha güvenilir bir yeniden boyutlandırma çözümü
+      if (typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(entries => {
+          for (let entry of entries) {
+            if (entry.target.classList.contains('dataTables_wrapper')) {
+              dataTable.columns.adjust().draw();
+            }
+          }
+        });
+
+        ro.observe(document.querySelector('.dataTables_wrapper'));
+      }
     } catch (error) {
       console.error('Error loading points:', error);
       showNotification('Failed to load points table. Please try again.', 'error');
+    }
+  }
+
+  async function loadLineStringsTable() {
+    console.log('Loading LineStrings table');
+    try {
+      const data = await api.fetchAllLineStrings();
+
+      if (lineStringDataTable) {
+        lineStringDataTable.destroy();
+      }
+
+      lineStringDataTable = $('#linestrings-table').DataTable({
+        data: data.value,
+        columns: [
+          { data: 'name', width: '60%' },
+          {
+            data: null,
+            width: '40%',
+            render: (data, type, row) => `
+              <button class="action-btn show-btn" data-id="${row.id}">Show</button>
+              <button class="action-btn delete-btn" data-id="${row.id}">Delete</button>
+            `
+          }
+        ],
+        scrollY: '100%',
+        scrollX: true,
+        scrollCollapse: true,
+        paging: true,
+        columnDefs: [
+          { targets: '_all', className: 'dt-head-left' }
+        ],
+        initComplete: function(settings, json) {
+          // Yeniden boyutlandırma işlemi
+          var resizeTimer;
+          $('.dataTables_wrapper').on('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+              lineStringDataTable.columns.adjust().draw();
+            }, 250);
+          });
+        }
+      });
+
+      addLineStringTableEventListeners();
+    } catch (error) {
+      console.error('Error loading LineStrings:', error);
+      showNotification('Failed to load LineStrings table. Please try again.', 'error');
+    }
+  }
+
+  async function loadPolygonsTable() {
+    console.log('Loading Polygons table');
+    try {
+      const data = await api.fetchAllPolygons();
+
+      if (polygonDataTable) {
+        polygonDataTable.destroy();
+      }
+
+      polygonDataTable = $('#polygons-table').DataTable({
+        data: data.value,
+        columns: [
+          { data: 'name', width: '60%' },
+          {
+            data: null,
+            width: '40%',
+            render: (data, type, row) => `
+              <button class="action-btn show-btn" data-id="${row.id}">Show</button>
+              <button class="action-btn delete-btn" data-id="${row.id}">Delete</button>
+            `
+          }
+        ],
+        scrollY: '100%',
+        scrollX: true,
+        scrollCollapse: true,
+        paging: true,
+        columnDefs: [
+          { targets: '_all', className: 'dt-head-left' }
+        ],
+        initComplete: function(settings, json) {
+          // Yeniden boyutlandırma işlemi
+          var resizeTimer;
+          $('.dataTables_wrapper').on('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+              polygonDataTable.columns.adjust().draw();
+            }, 250);
+          });
+        }
+      });
+
+      addPolygonTableEventListeners();
+    } catch (error) {
+      console.error('Error loading Polygons:', error);
+      showNotification('Failed to load Polygons table. Please try again.', 'error');
     }
   }
 
@@ -499,7 +640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     $('#points-table').on('click', '.delete-btn', function() {
-      showDeleteConfirmation($(this).data('id'));
+      showDeleteConfirmation($(this).data('id'), 'point');
     });
 
     elements.closeUpdateOptions.addEventListener('click', () => {
@@ -510,6 +651,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (event.target == elements.updateOptions) {
         elements.updateOptions.style.display = 'none';
       }
+    });
+  }
+
+  function addLineStringTableEventListeners() {
+    $('#linestrings-table').on('click', '.show-btn', function() {
+      showLineString($(this).data('id'));
+    });
+
+    $('#linestrings-table').on('click', '.delete-btn', function() {
+      showDeleteConfirmation($(this).data('id'), 'linestring');
+    });
+  }
+
+  function addPolygonTableEventListeners() {
+    $('#polygons-table').on('click', '.show-btn', function() {
+      showPolygon($(this).data('id'));
+    });
+
+    $('#polygons-table').on('click', '.delete-btn', function() {
+      showDeleteConfirmation($(this).data('id'), 'polygon');
     });
   }
 
@@ -605,54 +766,74 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   }
-  
-  // Show delete confirmation
-  function showDeleteConfirmation(id) {
-    console.log('Showing delete confirmation for:', id);
-    elements.confirmationPanel.style.display = 'block';
-    elements.confirmDelete.onclick = () => deletePoint(id);
-    elements.cancelDelete.onclick = () => elements.confirmationPanel.style.display = 'none';
-  }
 
-  // Delete point
-  async function deletePoint(id) {
-    console.log('Deleting point:', id);
-    try {
-      await api.deletePoint(id);
-      await loadPointsTable();
-      await loadAllPoints();
-      elements.confirmationPanel.style.display = 'none';
-      showNotification('Point deleted successfully!', 'success');
-    } catch (error) {
-      console.error('Error deleting point:', error);
-      showNotification('Failed to delete point. Please try again.', 'error');
+  function showLineString(id) {
+    console.log('Showing LineString:', id);
+    const feature = map.getLayers().getArray()[3].getSource().getFeatures().find(f => f.get('id') === id);
+    if (feature) {
+      previousZoom = map.getView().getZoom();
+      previousCenter = map.getView().getCenter();
+
+      elements.lineStringQueryPanel.style.display = 'none';
+      elements.returnToPanel.style.display = 'block';
+
+      const extent = feature.getGeometry().getExtent();
+      map.getView().fit(extent, {
+        padding: [50, 50, 50, 50],
+        duration: 1000
+      });
     }
   }
 
-  // Make table resizable
-  function makeResizable(api) {
-    console.log('Making table resizable');
-    const tableContainer = api.table().container();
-    $(tableContainer).find('thead th').each(function(i) {
-      const th = $(this);
-      const resizer = $('<div class="table-resizer"></div>');
-      th.append(resizer);
-      
-      resizer.on('mousedown', function(e) {
-        const startX = e.pageX;
-        const startWidth = th.width();
-        
-        $(document).on('mousemove.resize', function(e) {
-          const width = startWidth + (e.pageX - startX);
-          th.width(width);
-          api.columns.adjust();
-        });
-        
-        $(document).on('mouseup.resize', function() {
-          $(document).off('mousemove.resize mouseup.resize');
-        });
+  function showPolygon(id) {
+    console.log('Showing Polygon:', id);
+    const feature = map.getLayers().getArray()[4].getSource().getFeatures().find(f => f.get('id') === id);
+    if (feature) {
+      previousZoom = map.getView().getZoom();
+      previousCenter = map.getView().getCenter();
+
+      elements.polygonQueryPanel.style.display = 'none';
+      elements.returnToPanel.style.display = 'block';
+
+      const extent = feature.getGeometry().getExtent();
+      map.getView().fit(extent, {
+        padding: [50, 50, 50, 50],
+        duration: 1000
       });
-    });
+    }
+  }
+  
+  // Show delete confirmation
+  function showDeleteConfirmation(id, type) {
+    console.log(`Showing delete confirmation for ${type}:`, id);
+    elements.confirmationPanel.style.display = 'block';
+    elements.confirmDelete.onclick = () => deleteGeometry(id, type);
+    elements.cancelDelete.onclick = () => elements.confirmationPanel.style.display = 'none';
+  }
+
+  // Delete geometry
+  async function deleteGeometry(id, type) {
+    console.log(`Deleting ${type}:`, id);
+    try {
+      if (type === 'point') {
+        await api.deletePoint(id);
+        await loadPointsTable();
+        await loadAllPoints();
+      } else if (type === 'linestring') {
+        await api.deleteLineString(id);
+        await loadLineStringsTable();
+        await loadAllLineStrings();
+      } else if (type === 'polygon') {
+        await api.deletePolygon(id);
+        await loadPolygonsTable();
+        await loadAllPolygons();
+      }
+      elements.confirmationPanel.style.display = 'none';
+      showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully!`, 'success');
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+      showNotification(`Failed to delete ${type}. Please try again.`, 'error');
+    }
   }
 
   function startPolygonDraw() {
@@ -666,6 +847,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     map.addInteraction(drawInteraction);
     map.getViewport().style.cursor = 'crosshair';
+
+    elements.finishPolygonDrawingBtn.style.display = 'block';
 
     drawInteraction.on('drawend', (event) => {
       polygonFeature = event.feature;
@@ -708,6 +891,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function closePolygonPanel() {
     console.log('Closing Polygon panel and resetting UI');
     elements.polygonPanel.style.display = 'none';
+    elements.finishPolygonDrawingBtn.style.display = 'none';
     elements.polygonName.value = '';
     map.removeInteraction(drawInteraction);
     map.getViewport().style.cursor = 'default';
@@ -725,6 +909,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   
     map.addInteraction(drawInteraction);
     map.getViewport().style.cursor = 'crosshair';
+  
+    elements.finishDrawingBtn.style.display = 'block';
   
     drawInteraction.on('drawend', (event) => {
       lineStringFeature = event.feature;
@@ -770,6 +956,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function closeLineStringPanel() {
     console.log('Closing LineString panel and resetting UI');
     elements.lineStringPanel.style.display = 'none';
+    elements.finishDrawingBtn.style.display = 'none';
     elements.lineStringName.value = '';
     map.removeInteraction(drawInteraction);
     map.getViewport().style.cursor = 'default';
@@ -778,12 +965,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Event listeners
   elements.addPolygonBtn.addEventListener('click', startPolygonDraw);
 
+  elements.finishPolygonDrawingBtn.addEventListener('click', () => {
+    console.log('Finish polygon drawing button clicked');
+    if (drawInteraction) {
+      map.removeInteraction(drawInteraction);
+      showPolygonNamePanel();
+    }
+  });
+
   elements.savePolygonBtn.addEventListener('click', savePolygon);
 
   // Polygon panel close button event listener
   document.querySelector('#polygon-panel .close-panel-btn').addEventListener('click', closePolygonPanel);
 
   elements.addLineStringBtn.addEventListener('click', startLineStringDraw);
+
+  elements.finishDrawingBtn.addEventListener('click', () => {
+    console.log('Finish drawing button clicked');
+    if (drawInteraction) {
+      map.removeInteraction(drawInteraction);
+      showLineStringNamePanel();
+    }
+  });
 
   elements.saveLineStringBtn.addEventListener('click', saveLineString);
 
@@ -807,6 +1010,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPointsTable();
   });
 
+  elements.queryLineStringBtn.addEventListener('click', async () => {
+    console.log('Query LineString button clicked');
+    elements.lineStringQueryPanel.style.display = 'block';
+    await loadLineStringsTable();
+  });
+
+  elements.queryPolygonBtn.addEventListener('click', async () => {
+    console.log('Query Polygon button clicked');
+    elements.polygonQueryPanel.style.display = 'block';
+    await loadPolygonsTable();
+  });
+
   elements.updateSaveBtn.addEventListener('click', async () => {
     console.log('Update save button clicked');
     const updatedPoint = {
@@ -824,6 +1039,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.error('Error updating point:', error);
       showNotification('Failed to update point. Please try again.', 'error');
+    }
+  });
+
+  elements.closeLineStringBtn.addEventListener('click', () => {
+    console.log('Close LineString button clicked');
+    elements.lineStringQueryPanel.style.display = 'none';
+    if (lineStringDataTable) {
+      lineStringDataTable.destroy();
+      lineStringDataTable = null;
+    }
+  });
+  
+  elements.closePolygonBtn.addEventListener('click', () => {
+    console.log('Close Polygon button clicked');
+    elements.polygonQueryPanel.style.display = 'none';
+    if (polygonDataTable) {
+      polygonDataTable.destroy();
+      polygonDataTable = null;
     }
   });
 
