@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map Application</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/css/ol.css">
+    <title>Interactive Map Application</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/css/ol.css" type="text/css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="map.css">
     <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.5.0/build/ol.js"></script>
@@ -29,15 +29,16 @@
 
     <div id="panel" class="jspanel">
         <button class="close-panel-btn">&times;</button>
+        <h3>Add Point</h3>
         <p><strong>X Coordinate:</strong> <span id="pointX"></span></p>
         <p><strong>Y Coordinate:</strong> <span id="pointY"></span></p>
         <label for="Name">Name:</label>
-        <input type="text" id="Name">
+        <input type="text" id="Name" name="Name">
         <button id="save-btn">Save</button>
     </div>
 
     <div id="linestring-panel" class="jspanel" style="display: none;">
-        <button class="close-panel-btn">×</button>
+        <button class="close-panel-btn">&times;</button>
         <h3>Add LineString</h3>
         <label for="linestring-name">Name:</label>
         <input type="text" id="linestring-name" name="linestring-name">
@@ -45,7 +46,7 @@
     </div>
 
     <div id="polygon-panel" class="jspanel" style="display: none;">
-        <button class="close-panel-btn">×</button>
+        <button class="close-panel-btn">&times;</button>
         <h3>Add Polygon</h3>
         <label for="polygon-name">Name:</label>
         <input type="text" id="polygon-name" name="polygon-name">
@@ -124,22 +125,21 @@
     </div>
 
     <div id="update-panel" class="jspanel">
-        <h2>Update Point</h2>
+        <h3>Update Point</h3>
         <label for="update-pointX">X Coordinate:</label>
-        <input type="text" id="update-pointX">
+        <input type="text" id="update-pointX" name="update-pointX">
         <label for="update-pointY">Y Coordinate:</label>
-        <input type="text" id="update-pointY">
+        <input type="text" id="update-pointY" name="update-pointY">
         <label for="update-Name">Name:</label>
-        <input type="text" id="update-Name">
+        <input type="text" id="update-Name" name="update-Name">
         <button id="update-save-btn">Save</button>
         <button id="update-cancel-btn">Cancel</button>
     </div>
 
-    <button id="return-to-panel" style="display: none;">Return to Panel</button>
+    <button id="return-to-panel">Return to Panel</button>
+    <button id="finish-drawing">Finish Drawing</button>
+    <button id="finish-polygon-drawing">Finish Polygon Drawing</button>
 
-    <button id="finish-drawing" style="display: none;">Finish Drawing</button>
-    <button id="finish-polygon-drawing" style="display: none;">Finish Polygon Drawing</button>
-
-    <script type="module" src="map.js"></script>
+    <script src="map.js"></script>
 </body>
 </html>

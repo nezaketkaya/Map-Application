@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let drawInteraction;
   let lineStringFeature;
   let polygonFeature;
+  let selectedFeature = null;
+  let modifyInteraction = null;
 
   // DOM Elements
   const elements = {
@@ -48,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     polygonName: document.getElementById('polygon-name'),
     savePolygonBtn: document.getElementById('save-polygon-btn'),
     closeLineStringBtn: document.querySelector('#linestring-query-panel .close-btn'),
-  closePolygonBtn: document.querySelector('#polygon-query-panel .close-btn'),
+    closePolygonBtn: document.querySelector('#polygon-query-panel .close-btn'),
   };
   
   elements.mapUpdateSaveBtn.id = 'mapUpdateSaveBtn';
@@ -59,8 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let previousZoom;
   let previousCenter;
   let dragInteraction;
-  let selectedFeature;
-  let saveButton;
   
   // Styles
   const styles = {
@@ -236,6 +236,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!response.ok) throw new Error('Failed to delete Polygon');
       console.log('Polygon deleted successfully');
     },
+    async updateLineString(id, lineString) {
+      console.log('Updating LineString:', id, lineString);
+      const response = await fetch(`${BASE_URL}/api/LineString/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lineString)
+      });
+      if (!response.ok) throw new Error('Failed to update LineString');
+      console.log('LineString updated successfully');
+    },
+    async updatePolygon(id, polygon) {
+      console.log('Updating Polygon:', id, polygon);
+      const response = await fetch(`${BASE_URL}/api/Polygon/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(polygon)
+      });
+      if (!response.ok) throw new Error('Failed to update Polygon');
+      console.log('Polygon updated successfully');
+    }
   };
 
   // Notification function
@@ -336,6 +356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Handle save click
+  // Handle save click
   async function handleSaveClick() {
     console.log('Handling save click');
     const point = {
@@ -379,7 +400,45 @@ document.addEventListener('DOMContentLoaded', async () => {
       handleMapUpdateMode(event);
     } else if (interaction) {
       handlePointAddition(event);
+    } else {
+      const feature = map.forEachFeatureAtPixel(event.pixel, function(feature) {
+        return feature;
+      });
+  
+      if (feature) {
+        const geometry = feature.getGeometry();
+        if (geometry instanceof ol.geom.Point) {
+          handlePointClick(feature, event);
+        }
+      }
     }
+  }
+
+  function handleMapDoubleClick(event) {
+    const feature = map.forEachFeatureAtPixel(event.pixel, function(feature) {
+      return feature;
+    });
+  
+    if (feature) {
+      const geometry = feature.getGeometry();
+      if (geometry instanceof ol.geom.LineString || geometry instanceof ol.geom.Polygon) {
+        enableGeometryEditing(feature);
+      }
+    }
+  }
+
+  // Handle point click
+  function handlePointClick(feature, event) {
+    selectedFeature = feature;
+    const coordinates = ol.proj.toLonLat(feature.getGeometry().getCoordinates());
+    elements.updatePointX.value = coordinates[0].toFixed(6);
+    elements.updatePointY.value = coordinates[1].toFixed(6);
+    elements.updateName.value = feature.get('name');
+    elements.updatePanel.style.display = 'block';
+    currentUpdateId = feature.get('id');
+    
+    // Position the update panel near the clicked point
+    positionPanel(event, elements.updatePanel);
   }
 
   // Handle map update mode
@@ -431,15 +490,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     map.getLayers().getArray()[2].getSource().clear();
     map.getLayers().getArray()[2].getSource().addFeature(highlightFeature);
 
-    positionPanel(event);
+    positionPanel(event, elements.panel);
     elements.saveBtn.addEventListener('click', handleSaveClick, { once: true });
   }
 
   // Position panel
-  function positionPanel(event) {
+  function positionPanel(event, panel) {
     console.log('Positioning panel');
-    const panelWidth = elements.panel.offsetWidth;
-    const panelHeight = elements.panel.offsetHeight;
+    const panelWidth = panel.offsetWidth;
+    const panelHeight = panel.offsetHeight;
     const mapSize = map.getSize();
     const [mapWidth, mapHeight] = mapSize;
     const [xOffset, yOffset] = [event.pixel[0] + 10, event.pixel[1] + 10];
@@ -449,9 +508,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (xOffset + panelWidth > mapWidth) panelLeft = xOffset - panelWidth - 10;
     if (yOffset + panelHeight > mapHeight) panelTop = yOffset - panelHeight - 10;
 
-    elements.panel.style.left = `${Math.max(0, panelLeft)}px`;
-    elements.panel.style.top = `${Math.max(0, panelTop)}px`;
-    elements.panel.style.display = 'block';
+    panel.style.left = `${Math.max(0, panelLeft)}px`;
+    panel.style.top = `${Math.max(0, panelTop)}px`;
+    panel.style.display = 'block';
   }
 
   // Load points table
@@ -474,7 +533,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: null,
             width: '25%',
             render: (data, type, row) => `
-              <button class="action-btn update-btn" data-id="${row.id}">Update</button>
               <button class="action-btn show-btn" data-id="${row.id}">Show</button>
               <button class="action-btn delete-btn" data-id="${row.id}">Delete</button>
             `
@@ -500,7 +558,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
           });
           
-          // Yeniden boyutlandırma işlemi tamamlandığında tabloyu yeniden çiz
           var resizeTimer;
           $('.dataTables_wrapper').on('resize', function() {
             clearTimeout(resizeTimer);
@@ -513,7 +570,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       addTableEventListeners();
 
-      // ResizeObserver API'sini kullanarak daha güvenilir bir yeniden boyutlandırma çözümü
       if (typeof ResizeObserver !== 'undefined') {
         var ro = new ResizeObserver(entries => {
           for (let entry of entries) {
@@ -561,7 +617,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           { targets: '_all', className: 'dt-head-left' }
         ],
         initComplete: function(settings, json) {
-          // Yeniden boyutlandırma işlemi
           var resizeTimer;
           $('.dataTables_wrapper').on('resize', function() {
             clearTimeout(resizeTimer);
@@ -609,7 +664,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           { targets: '_all', className: 'dt-head-left' }
         ],
         initComplete: function(settings, json) {
-          // Yeniden boyutlandırma işlemi
           var resizeTimer;
           $('.dataTables_wrapper').on('resize', function() {
             clearTimeout(resizeTimer);
@@ -630,11 +684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Add table event listeners
   function addTableEventListeners() {
     console.log('Adding table event listeners');
-    $('#points-table').on('click', '.update-btn', function() {
-      currentUpdateId = $(this).data('id');
-      elements.updateOptions.style.display = 'block';
-    });
-
+    
     $('#points-table').on('click', '.show-btn', function() {
       showPoint($(this).data('id'));
     });
@@ -676,66 +726,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Update point
   async function updatePoint(id, method) {
-    console.log('Updating point:', id, method);
     try {
-      const data = await api.fetchAllPoints();
-      const point = data.value.find(p => p.id === id);
-      if (point) {
-        if (method === 'panel') {
-          elements.updatePointX.value = point.pointx;
-          elements.updatePointY.value = point.pointy;
-          elements.updateName.value = point.name;
-          elements.updatePanel.style.display = 'block';
-        } else if (method === 'map') {
-          elements.updateOptions.style.display = 'none';
-          elements.queryPanel.style.display = 'none';
-
-          selectedFeature = vectorSource.getFeatures().find(f => f.get('id') === id);
-          if (selectedFeature) {
-            selectedFeature.setStyle(styles.selected);
-            
-            map.getView().animate({
-              center: selectedFeature.getGeometry().getCoordinates(),
-              zoom: 7,
-              duration: 1000
-            });
-
-            dragInteraction = new ol.interaction.Translate({
-              features: new ol.Collection([selectedFeature])
-            });
-            map.addInteraction(dragInteraction);
-
-            dragInteraction.on('translateend', () => {
-              elements.mapUpdateSaveBtn.style.display = 'block';
-            });
-
-            elements.mapUpdateSaveBtn.onclick = async () => {
-              const newCoord = ol.proj.toLonLat(selectedFeature.getGeometry().getCoordinates());
-              const updatedPoint = {
-                pointX: newCoord[0],
-                pointY: newCoord[1],
-                Name: point.name
-              };
-
-              try {
-                await api.updatePoint(id, updatedPoint);
-                resetMapUpdateUI();
-                await loadAllPoints();
-                showNotification('Point updated successfully!', 'success');
-              } catch (error) {
-                console.error('Error updating point:', error);
-                showNotification('Failed to update point. Please try again.', 'error');
-              }
-            };
-          }
-        }
+      let updatedPoint;
+      if (method === 'panel') {
+        updatedPoint = {
+          pointX: parseFloat(elements.updatePointX.value),
+          pointY: parseFloat(elements.updatePointY.value),
+          Name: elements.updateName.value
+        };
+      } else if (method === 'map') {
+        const coordinates = ol.proj.toLonLat(selectedFeature.getGeometry().getCoordinates());
+        updatedPoint = {
+          pointX: coordinates[0],
+          pointY: coordinates[1],
+          Name: selectedFeature.get('name')
+        };
       }
+
+      await api.updatePoint(id, updatedPoint);
+      await loadAllPoints();
+      await loadPointsTable();
+      showNotification('Point updated successfully!', 'success');
+      elements.updatePanel.style.display = 'none';
     } catch (error) {
-      console.error('Error fetching point data:', error);
-      showNotification('Failed to fetch point data. Please try again.', 'error');
+      console.error('Error updating point:', error);
+      showNotification('Failed to update point. Please try again.', 'error');
     }
   }
-  
+
   // Reset map update UI
   function resetMapUpdateUI() {
     console.log('Resetting map update UI');
@@ -859,13 +877,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function showPolygonNamePanel() {
     console.log('Showing Polygon name panel');
     elements.polygonPanel.style.display = 'block';
-    positionPanel(elements.polygonPanel);
+    positionPanel({ pixel: map.getPixelFromCoordinate(polygonFeature.getGeometry().getCoordinates()[0][0]) }, elements.polygonPanel);
   }
 
   async function savePolygon() {
     console.log('Saving Polygon');
     const name = elements.polygonName.value;
-    const coordinates = polygonFeature.getGeometry().getCoordinates()[0]; // İlk halka
+    const coordinates = polygonFeature.getGeometry().getCoordinates()[0]; // First ring
     
     const flatCoordinates = coordinates.flatMap(coord => {
       const [lon, lat] = ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
@@ -922,7 +940,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function showLineStringNamePanel() {
     console.log('Showing LineString name panel');
     elements.lineStringPanel.style.display = 'block';
-    positionPanel(elements.lineStringPanel);
+    positionPanel({ pixel: map.getPixelFromCoordinate(lineStringFeature.getGeometry().getCoordinates()[0]) }, elements.lineStringPanel);
   }
 
   // Save LineString function
@@ -962,6 +980,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     map.getViewport().style.cursor = 'default';
   }
 
+  // Enable geometry editing
+  function enableGeometryEditing(feature) {
+    const geometry = feature.getGeometry();
+    let type;
+    
+    if (geometry instanceof ol.geom.LineString) {
+      type = 'LineString';
+    } else if (geometry instanceof ol.geom.Polygon) {
+      type = 'Polygon';
+    } else {
+      console.error('Unsupported geometry type');
+      return;
+    }
+  
+    if (modifyInteraction) {
+      map.removeInteraction(modifyInteraction);
+    }
+  
+    modifyInteraction = new ol.interaction.Modify({
+      features: new ol.Collection([feature])
+    });
+  
+    map.addInteraction(modifyInteraction);
+  
+    modifyInteraction.on('modifyend', async () => {
+      await updateGeometry(feature, type);
+    });
+  
+    showNotification(`${type} editing mode activated. Drag vertices to edit.`, 'success');
+  }
+  
+  // Update geometry
+  async function updateGeometry(feature, type) {
+    const coordinates = feature.getGeometry().getCoordinates();
+    let flatCoordinates;
+  
+    if (type === 'LineString') {
+      flatCoordinates = coordinates.flatMap(coord => {
+        const [lon, lat] = ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
+        return [lon.toFixed(6), lat.toFixed(6)];
+      });
+    } else if (type === 'Polygon') {
+      flatCoordinates = coordinates[0].flatMap(coord => {
+        const [lon, lat] = ol.proj.transform(coord, 'EPSG:3857', 'EPSG:4326');
+        return [lon.toFixed(6), lat.toFixed(6)];
+      });
+    }
+  
+    const updatedGeometry = {
+      id: feature.get('id'),
+      name: feature.get('name'),
+      coordinates: flatCoordinates.join(',')
+    };
+  
+    try {
+      if (type === 'LineString') {
+        await api.updateLineString(updatedGeometry.id, updatedGeometry);
+      } else if (type === 'Polygon') {
+        await api.updatePolygon(updatedGeometry.id, updatedGeometry);
+      }
+      showNotification(`${type} updated successfully!`, 'success');
+      
+      // Refresh map after update
+      if (type === 'LineString') {
+        await loadAllLineStrings();
+      } else if (type === 'Polygon') {
+        await loadAllPolygons();
+      }
+    } catch (error) {
+      console.error(`Error updating ${type}:`, error);
+      showNotification(`Failed to update ${type}. Please try again.`, 'error');
+    }
+  }
+  
   // Event listeners
   elements.addPolygonBtn.addEventListener('click', startPolygonDraw);
 
@@ -1024,22 +1116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   elements.updateSaveBtn.addEventListener('click', async () => {
     console.log('Update save button clicked');
-    const updatedPoint = {
-      pointX: parseFloat(elements.updatePointX.value),
-      pointY: parseFloat(elements.updatePointY.value),
-      Name: elements.updateName.value
-    };
-
-    try {
-      await api.updatePoint(currentUpdateId, updatedPoint);
-      elements.updatePanel.style.display = 'none';
-      await loadAllPoints();
-      await loadPointsTable();
-      showNotification('Point updated successfully!', 'success');
-    } catch (error) {
-      console.error('Error updating point:', error);
-      showNotification('Failed to update point. Please try again.', 'error');
-    }
+    await updatePoint(currentUpdateId, 'panel');
   });
 
   elements.closeLineStringBtn.addEventListener('click', () => {
@@ -1049,6 +1126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       lineStringDataTable.destroy();
       lineStringDataTable = null;
     }
+    map.removeInteraction(modifyInteraction);
   });
   
   elements.closePolygonBtn.addEventListener('click', () => {
@@ -1058,6 +1136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       polygonDataTable.destroy();
       polygonDataTable = null;
     }
+    map.removeInteraction(modifyInteraction);
   });
 
   elements.updateCancelBtn.addEventListener('click', () => {
@@ -1082,7 +1161,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   elements.mapUpdate.addEventListener('click', () => {
     console.log('Map update button clicked');
-    updatePoint(currentUpdateId, 'map');
+    mapUpdateMode = true;
+    elements.mapUpdateSaveBtn.style.display = 'block';
+    map.getViewport().style.cursor = 'crosshair';
     elements.updateOptions.style.display = 'none';
   });
 
@@ -1105,6 +1186,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.returnToPanel.style.display = 'none';
   });
 
+  elements.mapUpdateSaveBtn.addEventListener('click', async () => {
+    console.log('Map update save button clicked');
+    await updatePoint(currentUpdateId, 'map');
+    elements.mapUpdateSaveBtn.style.display = 'none';
+    mapUpdateMode = false;
+    map.getViewport().style.cursor = 'default';
+  });
+
   // Initialize
   try {
     console.log('Starting initialization...');
@@ -1117,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadAllPolygons();
     console.log('Polygons loaded, setting up event listeners...');
     map.on('click', handleMapClick);
+    map.on('dblclick', handleMapDoubleClick);
     addTableEventListeners();
     console.log('Initialization complete');
   } catch (error) {
